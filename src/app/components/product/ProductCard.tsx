@@ -6,7 +6,7 @@ import { Product } from '@/app/types/product';
 // Pass `product` and `handleAddToCart` as props
 const ProductCard = ({ product, handleAddToCart }: { product: Product; handleAddToCart: () => void }) => {
   return (
-    // Correctly wrapped in a single parent div
+    
     <div
       key={product.id}
       className='bg-white rounded-lg shadow-md p-6 flex flex-col items-center text-center transition-transform hover:scale-105'
