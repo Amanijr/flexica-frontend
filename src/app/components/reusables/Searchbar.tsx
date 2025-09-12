@@ -20,7 +20,7 @@ const Searchbar = () => {
       }
 
       const result = await response.json();
-      console.log(result); // TODO: Render results
+      console.log(result); // Render results
     } catch (error) {
       console.error('Search failed:', error);
     }
@@ -28,7 +28,7 @@ const Searchbar = () => {
 
   return (
     <div className="w-full px-4 md:px-0">
-      {/* Responsive container: column on mobile, row on md+ */}
+      {/* Responsive container: column on mobile*/}
       <div className="flex flex-col md:flex-row items-stretch max-w-xl mx-auto gap-3">
         {/* Filter Dropdown */}
         <div className="relative w-full sm:w-40 md:w-32">
@@ -56,7 +56,7 @@ const Searchbar = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         </div>
 
-        {/* Search Button (optional) */}
+        {/* Search Button  */}
         <button
           onClick={handleSearch}
           className="md:w-auto w-full bg-blue-400 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2"

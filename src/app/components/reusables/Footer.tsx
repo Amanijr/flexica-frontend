@@ -64,7 +64,7 @@ const Footer = () => {
                 <FaLinkedin size={24} />
               </a>
             </div>
-        </div>
+        </div> 
         </div>
 
         {/* Bottom copyright line separated */}
