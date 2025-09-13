@@ -1,21 +1,28 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useCartWithSync } from "@/app/hooks/cart";
-import { useSession } from "../../auth/SessionContext";
+import { useEffect, useRef } from 'react';
+import { useCartStore } from '@/app/hooks/cart';
+import { useSession } from '@/app/auth/SessionContext';
 
 export const CartSyncOnLogin = () => {
-  const { mergeCarts } = useCartWithSync();
-  const { session } = useSession();
+  const mergeCarts = useCartStore((state) => state.mergeCarts);
+  const { session, loading } = useSession();
+  const hasMerged = useRef(false);
 
   useEffect(() => {
-    if (session) {
-      // User is logged in → merge local cart to backend
-      mergeCarts().catch((err) => {
-        console.error("Failed to merge local cart with backend:", err);
-      });
-    }
-  }, [session, mergeCarts]);
+    const mergeCartAfterLogin = async () => {
+      if (session && !loading && !hasMerged.current) {
+        try {
+          await new Promise((res) => setTimeout(res, 300));
+          await mergeCarts();
+          hasMerged.current = true;
+        } catch (err) {
+          console.error('Failed to merge cart after login:', err);
+        }
+      }
+    };
+    mergeCartAfterLogin();
+  }, [session, loading, mergeCarts]);
 
   return null;
 };

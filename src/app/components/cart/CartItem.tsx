@@ -1,5 +1,5 @@
 'use client'
-import { useCartStore, useCartWithSync } from '@/app/hooks/cart';
+import { useCartStore } from '@/app/hooks/cart';
 import { StaticImageData } from 'next/image';
 import Image from 'next/image';
 import React from 'react'
@@ -8,7 +8,7 @@ interface CartItem {
     id: string;
     name: string;
     price: number;
-    quantity: number;
+    quantity: number; 
     image: string | StaticImageData;
 }
 
@@ -17,7 +17,7 @@ const CartItemComponent = () => {
     const { items, removeItem, addItem, getTotalItems, updateQuantity, getFormattedSubtotal } = useCartStore();
 
     
-    const syncedCart = useCartWithSync();
+    const syncedCart = useCartStore();
 
     const handleRemove = async (id: string) => {
         await syncedCart.removeItem(id); // will remove locally + sync backend

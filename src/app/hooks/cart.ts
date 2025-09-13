@@ -20,7 +20,6 @@ interface CartStore {
   getTotalItems: () => number;
   updateQuantity: (id: string, amount: number) => void;
   getBackendFormat: () => { productId: number; quantity: number }[];
-  // API Gateway integration methods
   syncCart: () => Promise<void>;
   loadCartFromServer: () => Promise<void>;
   mergeCarts: () => Promise<void>;
@@ -28,7 +27,6 @@ interface CartStore {
   lastSyncError: string | null;
 }
 
-// Create the store
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
@@ -57,10 +55,8 @@ export const useCartStore = create<CartStore>()(
         }));
       },
 
-      // clear cart
       clearCart: () => set({ items: [] }),
 
-      // get formatted subtotal
       getFormattedSubtotal: () => {
         console.log("getting formatted subtotal");
         const subtotal = get().items.reduce(
@@ -78,7 +74,6 @@ export const useCartStore = create<CartStore>()(
         return get().items.reduce((acc, item) => acc + item.quantity, 0);
       },
 
-      // update quantity
       updateQuantity: (id: string, amount: number) =>{
         console.log("updating quantity", id, amount);
         set((state) => ({
@@ -90,7 +85,6 @@ export const useCartStore = create<CartStore>()(
         }));
       },
 
-      // get cart items in backend format
       getBackendFormat: () => {
         return get().items.map(item => ({
           productId: parseInt(item.id),
@@ -98,18 +92,22 @@ export const useCartStore = create<CartStore>()(
         }));
       },
 
-      // API Gateway integration methods
+      // Sync cart to server (empty-cart guard added)
       syncCart: async () => {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) return;
-        
+
+        const localCart = get().getBackendFormat();
+        if (!localCart || localCart.length === 0) {
+          console.log("No local cart items, skipping sync");
+          return;
+        }
+
         set({ isSyncing: true, lastSyncError: null });
         try {
-          // Call API endpoint to sync entire cart
-          const cartData = get().getBackendFormat();
           await apiRequest('/cart/addToCart', {
             method: 'POST',
-            data: { cartItemsDtos: cartData }
+            data: { cartItemsDtos: localCart }
           });
           console.log("Cart synced successfully");
         } catch (error: any) {
@@ -123,13 +121,10 @@ export const useCartStore = create<CartStore>()(
       loadCartFromServer: async () => {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) return;
-        
+
         set({ isSyncing: true, lastSyncError: null });
         try {
-         
           const response = await apiRequest<{ cartItems: any[] }>('/cart/viewMyCart');
-          
-          // Transform backend response to our CartItem format
           const serverCart = response.cartItems.map(item => ({
             id: item.product.id.toString(),
             name: item.product.name,
@@ -137,7 +132,6 @@ export const useCartStore = create<CartStore>()(
             quantity: item.quantity,
             image: item.product.image
           }));
-          
           set({ items: serverCart });
           console.log("Cart loaded from server");
         } catch (error: any) {
@@ -148,21 +142,24 @@ export const useCartStore = create<CartStore>()(
         }
       },
 
+      // Merge local cart with server (empty-cart guard added)
       mergeCarts: async () => {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) return;
-        
+
+        const localCart = get().getBackendFormat();
+        if (!localCart || localCart.length === 0) {
+          console.log("No local cart items, skipping merge");
+          return;
+        }
+
         set({ isSyncing: true, lastSyncError: null });
         try {
-          const localCart = get().getBackendFormat();
-          
-          // Call API endpoint to merge carts by adding local items to server cart
           await apiRequest('/cart/addToCart', {
             method: 'POST',
             data: { cartItemsDtos: localCart }
           });
-          
-          
+
           const response = await apiRequest<{ cartItems: any[] }>('/cart/viewMyCart');
           const mergedCart = response.cartItems.map(item => ({
             id: item.product.id.toString(),
@@ -171,7 +168,6 @@ export const useCartStore = create<CartStore>()(
             quantity: item.quantity,
             image: item.product.image
           }));
-          
           set({ items: mergedCart });
           console.log("Carts merged successfully");
         } catch (error: any) {
@@ -183,123 +179,9 @@ export const useCartStore = create<CartStore>()(
       },
     }),
 
-    // persist the cart
     {
-      name: "cart", 
+      name: "cart",
       storage: createJSONStorage(() => localStorage),
     }
   )
 );
-
-// Create a hook for automatic sync after cart operations
-export const useCartWithSync = () => {
-  const {
-    items,
-    addItem,
-    removeItem,
-    updateQuantity,
-    clearCart,
-    syncCart,
-    loadCartFromServer,
-    mergeCarts,
-    isSyncing,
-    lastSyncError,
-    ...rest
-  } = useCartStore();
-
-  // Check if user is authenticated
-  const isAuthenticated = () => {
-    return !!localStorage.getItem(TOKEN_KEY);
-  };
-
-  // Add single item to backend
-  const addItemToServer = async (item: CartItem) => {
-    try {
-      await apiRequest('/cart/addToCart', {
-        method: 'POST',
-        data: { 
-          cartItemsDtos: [{ 
-            productId: parseInt(item.id), 
-            quantity: item.quantity 
-          }] 
-        }
-      });
-    } catch (error: any) {
-      console.error("Failed to add item to server:", error);
-      throw error;
-    }
-  };
-
-  // Enhanced methods that automatically sync after operations when authenticated
-  const addItemWithSync = async (item: CartItem) => {
-    addItem(item);
-    if (isAuthenticated()) {
-      await addItemToServer(item);
-    }
-  };
-
-  const removeItemWithSync = async (id: string) => {
-    // For removal, we need to set quantity to 0 or use a different endpoint
-    // This depends on your backend API
-    removeItem(id);
-    if (isAuthenticated()) {
-      // Assuming your backend has a remove endpoint
-      try {
-        await apiRequest(`/cart/remove/${id}`, {
-          method: 'DELETE'
-        });
-      } catch (error: any) {
-        console.error("Failed to remove item from server:", error);
-        // If removal fails, we might need to reload the cart from server
-        await loadCartFromServer();
-      }
-    }
-  };
-
-  const updateQuantityWithSync = async (id: string, amount: number) => {
-    updateQuantity(id, amount);
-    if (isAuthenticated()) {
-      const item = items.find(i => i.id === id);
-      if (item) {
-        await apiRequest('/cart/addToCart', {
-          method: 'POST',
-          data: { 
-            cartItemsDtos: [{ 
-              productId: parseInt(id), 
-              quantity: item.quantity 
-            }] 
-          }
-        });
-      }
-    }
-  };
-
-  const clearCartWithSync = async () => {
-    clearCart();
-    if (isAuthenticated()) {
-      // Assuming your backend has a clear endpoint
-      try {
-        await apiRequest('/cart/clear', {
-          method: 'DELETE'
-        });
-      } catch (error: any) {
-        console.error("Failed to clear cart on server:", error);
-      }
-    }
-  };
-
-  return {
-    items,
-    addItem: addItemWithSync,
-    removeItem: removeItemWithSync,
-    updateQuantity: updateQuantityWithSync,
-    clearCart: clearCartWithSync,
-    syncCart,
-    loadCartFromServer,
-    mergeCarts,
-    isSyncing,
-    lastSyncError,
-    isAuthenticated,
-    ...rest
-  };
-};
