@@ -11,15 +11,18 @@ export interface VendorProfile {
 }
 
 export interface UserProfile {
-  username: string;
-  phone: string;
-  email: string;
-  vendor?: VendorProfile;
-}
-
+    userId?: number;
+    username: string;
+    phone: string;
+    email: string;
+    role?: "USER" | "ADMIN";
+    vendor?: VendorProfile;
+  }
+  
 // Fetch user profile
 export async function fetchUserProfile(): Promise<UserProfile> {
-  return apiRequest<UserProfile>("/profile/viewProfile");
+  const response = await apiRequest<{ data: UserProfile }>("/profile/viewProfile");
+  return response.data; 
 }
 
 // Edit buyer profile
@@ -27,16 +30,18 @@ export async function updateBuyerProfile(data: {
   username: string;
   phone: string;
 }) {
-  return apiRequest<UserProfile>("/profile/editBuyer", {
+  const response = await apiRequest<{ data: UserProfile }>("/profile/editBuyer", {
     method: "PATCH",
     data,
   });
+  return response.data;
 }
 
 // Edit vendor profile
 export async function updateVendorProfile(data: Partial<VendorProfile>) {
-  return apiRequest<VendorProfile>("/profile/editVendor", {
+  const response = await apiRequest<{ data: VendorProfile }>("/profile/editVendor", {
     method: "PATCH",
     data,
   });
+  return response.data;
 }
