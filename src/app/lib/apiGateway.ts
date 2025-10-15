@@ -1,14 +1,10 @@
-// src/app/lib/apiGateway.ts
 import axios, { AxiosRequestConfig, AxiosError } from "axios";
 
 export const TOKEN_KEY = "auth_token";
 
-// Use proxy path instead of hardcoding localhost:8080
-// Next.js will rewrite `/api` → `http://localhost:8080/api` via next.config.js
 const api = axios.create({
   baseURL: "/api/v1",
   headers: {
-    "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
@@ -17,7 +13,8 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers = config.headers ?? {};
+    (config.headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
   return config;
 });
@@ -37,16 +34,15 @@ api.interceptors.response.use(
 
 export type RequestOptions = AxiosRequestConfig & { requiresAuth?: boolean };
 
-// Generic request function
 export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
   try {
-    // If FormData is passed, remove Content-Type so axios sets it automatically
+    // FormData should not have Content-Type
     if (options.data instanceof FormData) {
-      if (!options.headers) options.headers = {};
-      delete options.headers["Content-Type"];
+      options.headers = options.headers ?? {};
+      delete (options.headers as Record<string, string>)["Content-Type"];
     }
 
     const response = await api({

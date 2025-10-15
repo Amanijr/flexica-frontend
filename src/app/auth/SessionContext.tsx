@@ -6,7 +6,7 @@ import { customAuth } from "@/app/auth/auth";
 export interface Session {
   userId: string;
   email: string;
-  role: "USER" | "ADMIN";
+  role: "USER" | "ADMIN" | "VENDOR" | "ROLE_USER" | "ROLE_ADMIN" | "ROLE_VENDOR";
   username?: string;
   phone?: string;
   joinDate?: string;
@@ -74,3 +74,5 @@ export function useSession() {
   }
   return context;
 }
+export { customAuth };
+

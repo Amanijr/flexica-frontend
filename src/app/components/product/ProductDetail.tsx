@@ -9,6 +9,7 @@ interface Product {
   name: string;
   price: number;
   image: string | StaticImageData;
+  images?: string[]; // optional gallery of data URLs
   description: string;
   displayFeatures?: string;
 }
@@ -20,6 +21,7 @@ interface ProductDetailProps {
 
 export default function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
   const [quantity, setQuantity] = useState(1);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const handleQuantityChange = (change: number) => {
     setQuantity(Math.max(1, quantity + change));
@@ -29,26 +31,53 @@ export default function ProductDetail({ product, onAddToCart }: ProductDetailPro
     onAddToCart(product.id.toString(), quantity);
   };
 
+  // Determine gallery: prefer product.images[], else fallback to single image
+  const gallery: string[] = (() => {
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images;
+    }
+    // Normalize single image to string URL
+    if (typeof product.image === 'string') return [product.image];
+    // StaticImageData fallback
+    // @ts-ignore
+    return [product.image?.src || ""];
+  })();
+
+  const activeImage = gallery[Math.min(activeIndex, Math.max(0, gallery.length - 1))] || "";
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Left Side - Product Image */}
+        {/* Left Side - Product Images */}
         <div className="space-y-6">
           <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden shadow-lg">
-            {typeof product.image === 'string' ? (
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-contain hover:scale-105 transition-transform duration-500"
-              />
-            ) : (
-              <img
-                src={product.image.src}
-                alt={product.name}
-                className="w-full h-full object-contain hover:scale-105 transition-transform duration-500"
-              />
-            )}
+            {/* Main image */}
+            <img
+              src={activeImage}
+              alt={product.name}
+              className="w-full h-full object-contain hover:scale-105 transition-transform duration-500"
+            />
           </div>
+
+          {/* Thumbnails */}
+          {gallery.length > 1 && (
+            <div className="flex gap-3 flex-wrap">
+              {gallery.map((src, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveIndex(idx)}
+                  className={`w-20 h-20 rounded-lg border overflow-hidden ${
+                    activeIndex === idx ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'
+                  }`}
+                  aria-label={`View image ${idx + 1}`}
+                >
+                  <img src={src} alt={`thumb ${idx + 1}`} className="w-full h-full object-contain" />
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="bg-white rounded-lg p-4 shadow-sm">
             <p className="text-gray-600 text-sm leading-relaxed">
               {product.description}
@@ -93,7 +122,6 @@ export default function ProductDetail({ product, onAddToCart }: ProductDetailPro
               </button>
             </div>
           </div>
-
 
           {/* Add to Cart Button */}
           <button

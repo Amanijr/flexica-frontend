@@ -2,6 +2,7 @@
 import { useCartStore } from '@/app/hooks/cart';
 import { StaticImageData } from 'next/image';
 import Image from 'next/image';
+import Link from 'next/link';
 import React from 'react'
 
 interface CartItem {
@@ -11,6 +12,9 @@ interface CartItem {
     quantity: number; 
     image: string | StaticImageData;
 }
+
+// Safe transparent PNG fallback
+const FALLBACK_IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO4m+oEAAAAASUVORK5CYII=';
 
 const CartItemComponent = () => {
     
@@ -25,6 +29,13 @@ const CartItemComponent = () => {
 
     const handleQuantityChange = async (id: string, amount: number) => {
         await syncedCart.updateQuantity(id, amount); // updates locally + backend
+    };
+
+    const getSafeSrc = (img: string | StaticImageData): string => {
+        if (typeof img === 'string' && img) return img;
+        // @ts-ignore - StaticImageData has a src field
+        const src: string | undefined = img && (img as any).src;
+        return src || FALLBACK_IMG;
     };
 
     return (
@@ -53,7 +64,7 @@ const CartItemComponent = () => {
                     >
                         <div className="flex items-center gap-3">
                             <Image
-                                src={typeof item.image === 'string' ? item.image : item.image}
+                                src={getSafeSrc(item.image)}
                                 alt={item.name}
                                 width={100}
                                 height={100}
@@ -104,9 +115,9 @@ const CartItemComponent = () => {
                         <p className="text-lg font-medium">
                             Sub-total: {getFormattedSubtotal()}
                         </p>
-                        <button className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">
-                            Check-out
-                        </button>
+                        <Link href="/checkout" className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition inline-block">
+    Check-out
+</Link>
                     </div>
                 </div>
             )}

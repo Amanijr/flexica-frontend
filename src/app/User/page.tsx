@@ -1,10 +1,10 @@
-import React from 'react'
-import Profile from '../components/reusables/Profile'
+// import React from 'react'
+// import Profile from '../components/reusables/Profile'
 
-const ProfilePage = () => {
-  return (
-    <Profile />
-  )
-}
-
-export default ProfilePage
+// const ProfilePage = () => {
+//   return (
+//     <Profile />
+//   )
+// }
+// // 
+// export default ProfilePage

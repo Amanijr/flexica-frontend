@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { registerVendor, VendorRegistration } from "./VendorApi";
-import router from "next/router";
+import { handleRoleUpdateAfterVendorRegistration } from "../../lib/roleUpdateHandler";
+import { SmartRoleManager } from "../../lib/smartRoleManager";
+import { useRouter } from "next/navigation";
+
 
 export default function VendorRegistrationPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<VendorRegistration>({
     businessName: "",
     businessTin: "",
@@ -30,16 +34,27 @@ export default function VendorRegistrationPage() {
 
     try {
       const response = await registerVendor(formData);
-
-      console.log("backend Response: ",response)
-      setSuccessMsg(response.message || "Registered successfully!");
+      
+      // Extract business name from response
+      const businessName = response.data || formData.businessName;
+      
+      // Use Smart Role Manager to handle the role update
+      SmartRoleManager.handleVendorRegistrationSuccess(businessName);
+      
+      // Also update the stored role for consistency
+      const roleUpdated = await handleRoleUpdateAfterVendorRegistration(businessName);
+      
+      if (roleUpdated) {
+        setSuccessMsg(` Registered successfully! Your role has been updated to VENDOR for ${businessName}. You can now manage products immediately!`);
+      } else {
+        setSuccessMsg("Registered successfully! Please refresh the page to see your updated role.");
+      }
 
       setTimeout(() => {
+       
         router.push("/VendorDashboard");
-      }, 2000);
+      }, 1000);
     } catch (err: any) {
-
-        console.error('',err)
       setErrorMsg(err.message || "Failed to register as vendor");
     } finally {
       setLoading(false);

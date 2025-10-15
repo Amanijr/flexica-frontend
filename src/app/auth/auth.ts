@@ -1,5 +1,6 @@
 import { apiRequest, TOKEN_KEY } from "@/app/lib/apiGateway";
 import type { Session } from "@/app/auth/SessionContext";
+import { getUserRoleFromToken } from "@/app/lib/jwtUtils";
 
 interface RegisterData {
   username: string;
@@ -42,10 +43,21 @@ export const customAuth = {
       if (typeof window !== "undefined" && data.token) {
         localStorage.setItem(TOKEN_KEY, data.token);
 
+        // Extract actual role from JWT token
+        const actualRole = getUserRoleFromToken(data.token);
+        console.log('Login - JWT Role:', actualRole);
+        console.log('Login - Response Role:', data.role);
+
+        // Ensure role is one of the allowed values
+        const finalRole = actualRole || data.role;
+        const validRole = ["USER", "ADMIN", "VENDOR", "ROLE_USER", "ROLE_ADMIN", "ROLE_VENDOR"].includes(finalRole) 
+          ? finalRole 
+          : "USER";
+
         const userForSession: Session = {
           userId: data.userId,
           email: data.email,
-          role: data.role,
+          role: validRole as "USER" | "ADMIN" | "VENDOR" | "ROLE_USER" | "ROLE_ADMIN" | "ROLE_VENDOR",
           username: data.username || "Guest",
           phone: data.phone || "",
           joinDate:

@@ -1,5 +1,7 @@
 // components/dashboard/types.ts
 
+import { StaticImageData } from "next/image";
+
 export interface Sale {
     id: number;
     orderId: string;
@@ -11,9 +13,14 @@ export interface Sale {
   
   export interface Product {
     id: number;
-    name: string;
-    price: string;
-    image: string;
+    productName: string; // matches backend response
+    price: number;
+    description?: string;
+    category?: string; // backend returns category as string
+    quantity?: number;
+    brand?: string; // this might be in the category field based on backend
+    isAvailable?: boolean;
+    images?: string[]; // backend returns array of base64 image strings
   }
   
   export interface ProductFormData {

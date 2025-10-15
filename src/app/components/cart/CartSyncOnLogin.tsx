@@ -5,7 +5,7 @@ import { useCartStore } from '@/app/hooks/cart';
 import { useSession } from '@/app/auth/SessionContext';
 
 export const CartSyncOnLogin = () => {
-  const mergeCarts = useCartStore((state) => state.mergeCarts);
+  const handleLogin = useCartStore((state) => state.handleLogin);
   const { session, loading } = useSession();
   const hasMerged = useRef(false);
 
@@ -14,7 +14,7 @@ export const CartSyncOnLogin = () => {
       if (session && !loading && !hasMerged.current) {
         try {
           await new Promise((res) => setTimeout(res, 300));
-          await mergeCarts();
+          await handleLogin();
           hasMerged.current = true;
         } catch (err) {
           console.error('Failed to merge cart after login:', err);
@@ -22,7 +22,7 @@ export const CartSyncOnLogin = () => {
       }
     };
     mergeCartAfterLogin();
-  }, [session, loading, mergeCarts]);
+  }, [session, loading, handleLogin]);
 
   return null;
 };
