@@ -5,12 +5,13 @@ import { completePayment, PaymentMethod } from "@/app/lib/paymentApi";
 import { CreditCard, Smartphone, Banknote } from "lucide-react";
 
 interface PaymentFormProps {
+  orderId: number;
   totalAmount: number;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export default function PaymentForm({ totalAmount, onSuccess, onCancel }: PaymentFormProps) {
+export default function PaymentForm({ orderId, totalAmount, onSuccess, onCancel }: PaymentFormProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MOBILE_MONEY");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [transactionId, setTransactionId] = useState("");
@@ -26,15 +27,38 @@ export default function PaymentForm({ totalAmount, onSuccess, onCancel }: Paymen
 
     try {
       const paymentData = {
+        orderId,
+        amount: totalAmount,
         paymentMethod,
         ...(paymentMethod === "MOBILE_MONEY" && { phoneNumber, transactionId }),
         ...(paymentMethod === "BANK_TRANSFER" && { bankName, accountNumber }),
       };
 
+      console.log("Submitting payment with method:", paymentMethod, "for orderId:", orderId);
       await completePayment(paymentData);
+      console.log("Payment completed successfully");
+      // Small delay to ensure backend commits transaction
+      await new Promise(resolve => setTimeout(resolve, 200));
       onSuccess();
     } catch (err: any) {
-      setError(err.message || "Payment failed. Please try again.");
+      console.error("Payment error:", err);
+      
+      // Provide specific error messages based on error type
+      let errorMessage = "Payment failed. Please try again.";
+      
+      if (err.message?.includes("No  Orders Found") || err.message?.includes("no Orders found")) {
+        errorMessage = "Order not found or already processed. Please check your orders page.";
+      } else if (err.message?.includes("exact amount")) {
+        errorMessage = "Payment amount doesn't match order total. Please try again.";
+      } else if (err.message?.includes("401") || err.message?.includes("403")) {
+        errorMessage = "Session expired. Please log in again.";
+      } else if (err.message?.includes("network") || err.message?.includes("timeout")) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

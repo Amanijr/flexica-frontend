@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { StaticImageData } from "next/image";
-import { apiRequest, TOKEN_KEY } from "../lib/apiGateway";
+import { TOKEN_KEY } from "../lib/apiGateway";
+import * as cartApi from "../lib/cartApi";
 
 export interface CartItem {
   id: string;
@@ -89,12 +90,13 @@ export const useCartStore = create<CartStore>()(
         }));
 
         if (getToken()) {
-          apiRequest("/cart/removeFromCart", {
-            method: "DELETE",
-            data: { productId: parseInt(id) },
-          }).catch((err: any) => {
-            console.error("Failed to sync item removal:", err);
-          });
+          cartApi
+            .removeFromCart(parseInt(id))
+            .catch((err: any) => {
+              // If backend doesn't support remove endpoint, refresh local cart from server
+              console.error("Failed to sync item removal:", err);
+              get().loadFromServer().catch((e) => console.error('Failed to reload cart after removal error', e));
+            });
         }
       },
 
@@ -103,10 +105,10 @@ export const useCartStore = create<CartStore>()(
         
         const token = getToken();
         if (token) {
-          apiRequest("/cart/clearCart", {
-            method: "DELETE",
-          }).catch((err: any) => {
+          cartApi.clearCart().catch((err: any) => {
             console.error("Failed to clear server cart:", err);
+            // fallback: reload server cart to reflect actual server state
+            get().loadFromServer().catch((e) => console.error('Failed to reload cart after clear error', e));
           });
         }
       },
@@ -173,10 +175,7 @@ export const useCartStore = create<CartStore>()(
 
         set({ isSyncing: true, lastSyncError: null });
         try {
-          await apiRequest("/cart/addToCart", {
-            method: "POST",
-            data: { cartItemsDtos: localCart },
-          });
+          await cartApi.addToCart(localCart);
           set({ pendingSync: false });
           console.log("Cart synced to server");
         } catch (error: any) {
@@ -197,7 +196,7 @@ export const useCartStore = create<CartStore>()(
 
         set({ isSyncing: true, lastSyncError: null });
         try {
-          const response = await apiRequest<{ data: any }>("/cart/viewMyCart");
+          const response = await cartApi.viewMyCart();
           const serverItemsRaw = Array.isArray(response?.data?.cartItems) 
             ? response.data.cartItems 
             : [];
@@ -222,9 +221,7 @@ export const useCartStore = create<CartStore>()(
           await Promise.all(
             uniqueIds.map(async (pid) => {
               try {
-                const prodRes = await apiRequest<{ data: any }>(
-                  `/product/public/fetchOneProduct/${pid}`
-                );
+                const prodRes = await cartApi.fetchProduct(pid);
                 const p = prodRes?.data;
                 productMap.set(pid, {
                   name: p?.productName ?? `Product #${pid}`,
@@ -291,7 +288,7 @@ export const useCartStore = create<CartStore>()(
           const localItems = [...get().items];
           console.log(`Local cart: ${localItems.length} items`);
 
-          const response = await apiRequest<{ data: any }>("/cart/viewMyCart");
+          const response = await cartApi.viewMyCart();
           const serverCart = response?.data?.cartItems || [];
           console.log(`Server cart: ${serverCart.length} items`);
 
@@ -333,7 +330,7 @@ export const useCartStore = create<CartStore>()(
               // Item exists in both - add quantities
               mergeItems.push({
                 productId: parseInt(item.id),
-                quantity: item.quantity
+                quantity: serverQty + item.quantity
               });
               console.log(`Merging ${item.name}: server(${serverQty}) + local(${item.quantity})`);
             } else {
@@ -347,10 +344,7 @@ export const useCartStore = create<CartStore>()(
           });
 
           if (mergeItems.length > 0) {
-            await apiRequest("/cart/addToCart", {
-              method: "POST",
-              data: { cartItemsDtos: mergeItems },
-            });
+            await cartApi.addToCart(mergeItems);
             console.log(`Merged ${mergeItems.length} items to server`);
           }
 

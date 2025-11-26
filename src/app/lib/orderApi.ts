@@ -22,6 +22,8 @@ export interface Order {
 }
 
 export interface PlaceOrderResponse {
+  orderId: number;
+  totalPrice: number;
   status: OrderStatus;
   message: string;
 }
@@ -31,19 +33,35 @@ export interface PlaceOrderResponse {
  * Backend endpoint: POST /api/v1/order/placeOrder
  */
 export async function placeOrder(): Promise<PlaceOrderResponse> {
-  const response = await apiRequest<{
-    data: OrderStatus;
-    status: number;
-    message: string;
-  }>("/order/placeOrder", {
-    method: "POST",
-    requiresAuth: true,
-  });
+  // Developer testing hook: if TEST_FORCE_INSUFFICIENT_STOCK set in localStorage, simulate server error
+  try {
+    if (typeof window !== 'undefined' && localStorage.getItem('TEST_FORCE_INSUFFICIENT_STOCK') === '1') {
+      throw new Error('Insufficient stock for product 123: available=0, demanded=2');
+    }
 
-  return {
-    status: response.data,
-    message: response.message || "Order placed successfully",
-  };
+    const response = await apiRequest<{
+      data: {
+        orderId: number;
+        totalPrice: number;
+        status: OrderStatus;
+      };
+      statusCode: number;
+      message: string;
+    }>("/order/placeOrder", {
+      method: "POST",
+      requiresAuth: true,
+    });
+
+    return {
+      orderId: response.data.orderId,
+      totalPrice: response.data.totalPrice,
+      status: response.data.status,
+      message: response.message || "Order placed successfully",
+    };
+  } catch (err: any) {
+    // rethrow so callers can handle; preserve message
+    throw err;
+  }
 }
 
 /**

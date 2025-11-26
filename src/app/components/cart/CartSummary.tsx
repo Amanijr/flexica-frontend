@@ -6,7 +6,7 @@ import { useCartStore } from '@/app/hooks/cart';
 import { Trash2, ShoppingBag } from 'lucide-react';
 
 const CartSummary = () => {
-    const { items, clearCart, getFormattedSubtotal, getTotalItems } = useCartStore();
+    const { items, clearCart, getFormattedSubtotal, getTotalItems, isSyncing, pendingSync, lastSyncError } = useCartStore();
 
     if (items.length === 0) {
         return (
@@ -18,17 +18,30 @@ const CartSummary = () => {
         );
     }
 
-    return (
-        <div className="bg-white rounded-lg shadow-md p-6">
+        return (
+                <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Cart Summary</h3>
-                <button
+                                <div className="flex items-center gap-4">
+                                    <div className="text-sm text-gray-500">
+                                        {isSyncing ? (
+                                            <span className="text-blue-600">Syncing...</span>
+                                        ) : pendingSync ? (
+                                            <span className="text-yellow-600">Pending sync</span>
+                                        ) : lastSyncError ? (
+                                            <span className="text-red-600">Sync error</span>
+                                        ) : (
+                                            <span className="text-green-600">Synced</span>
+                                        )}
+                                    </div>
+                                    <button
                     onClick={clearCart}
                     className="text-red-500 hover:text-red-700 transition-colors flex items-center gap-2"
                 >
                     <Trash2 className="w-4 h-4" />
                     Clear Cart
-                </button>
+                                    </button>
+                                </div>
             </div>
 
             {/* Cart Items Preview */}

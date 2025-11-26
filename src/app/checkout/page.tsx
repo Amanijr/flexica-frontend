@@ -11,10 +11,17 @@ import Image from "next/image";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getFormattedSubtotal, getTotalItems, clearCart, syncCart } = useCartStore();
+  const { items, getFormattedSubtotal, getTotalItems, clearCart, syncToServer } = useCartStore();
   const [step, setStep] = useState<"review" | "payment" | "success">("review");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
+  const [orderDetails, setOrderDetails] = useState<{ orderId: number; totalPrice: number } | null>(null);
+
+  const showToast = (message: string) => {
+    setToast({ message, visible: true });
+    setTimeout(() => setToast(null), 4500);
+  };
 
   const handlePlaceOrder = async () => {
     setLoading(true);
@@ -25,17 +32,28 @@ export default function CheckoutPage() {
       
       // First, ensure cart is synced to backend
       console.log("Syncing cart to backend...");
-      await syncCart();
+      // call syncToServer(true) to force immediate sync
+      await syncToServer(true);
       
       console.log("Cart synced, placing order...");
       const response = await placeOrder();
-      console.log("Order placed successfully, status:", response.status);
+      console.log("Order placed successfully:", response);
+      
+      // Store order details for payment
+      setOrderDetails({
+        orderId: response.orderId,
+        totalPrice: response.totalPrice
+      });
       
       // Order created successfully, proceed to payment
       setStep("payment");
     } catch (err: any) {
       console.error("Failed to place order:", err);
-      
+      // Detect insufficient stock messages from backend and show toast
+      const msg = String(err?.message || err || "");
+      if (/insufficient stock/i.test(msg) || /cannot demand more than available/i.test(msg) || /can not demand/i.test(msg) || /not enough stock/i.test(msg) || /available=\d+, demanded=\d+/i.test(msg)) {
+        showToast("Order failed: some items exceed available stock. Please adjust your cart.");
+      }
       // Provide helpful error messages
       if (err.message?.includes("cart is empty") || err.message?.includes("no items")) {
         setError("Your cart appears to be empty on the server. Please refresh and try again.");
@@ -49,10 +67,18 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePaymentSuccess = () => {
-    console.log("Payment successful, clearing cart");
-    clearCart();
-    setStep("success");
+  const handlePaymentSuccess = async () => {
+    console.log("Payment successful, clearing cart and refreshing order status");
+    try {
+      // Clear cart locally and on server
+      clearCart();
+      // Small delay to ensure server has committed the order
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setStep("success");
+    } catch (err) {
+      console.error("Error during post-payment cleanup:", err);
+      setStep("success"); // Still proceed to success screen
+    }
   };
 
   if (items.length === 0 && step === "review") {
@@ -87,7 +113,11 @@ export default function CheckoutPage() {
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => router.push("/orders")}
+                onClick={async () => {
+                  // Give server a moment to fully commit order before navigating
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                  router.push("/orders");
+                }}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
               >
                 View My Orders
@@ -117,11 +147,14 @@ export default function CheckoutPage() {
               <ArrowLeft className="w-5 h-5" />
               Back to Order Review
             </button>
-            <PaymentForm
-              totalAmount={items.reduce((sum, item) => sum + item.price * item.quantity, 0)}
-              onSuccess={handlePaymentSuccess}
-              onCancel={() => setStep("review")}
-            />
+            {orderDetails && (
+              <PaymentForm
+                orderId={orderDetails.orderId}
+                totalAmount={orderDetails.totalPrice}
+                onSuccess={handlePaymentSuccess}
+                onCancel={() => setStep("review")}
+              />
+            )}
           </div>
         </div>
       </AuthGuard>
@@ -217,6 +250,15 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+      {toast && (
+        <div className="fixed right-4 bottom-6 z-50">
+          <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg shadow-md">
+            {toast.message}
+          </div>
+        </div>
+      )}
     </AuthGuard>
   );
 }
+
+  // Note: unreachable code removed; render toast inside the main return above

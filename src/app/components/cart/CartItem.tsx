@@ -18,17 +18,22 @@ const FALLBACK_IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQA
 
 const CartItemComponent = () => {
     
-    const { items, removeItem, addItem, getTotalItems, updateQuantity, getFormattedSubtotal } = useCartStore();
-
-    
-    const syncedCart = useCartStore();
+    const { items, removeItem, updateQuantity, getFormattedSubtotal } = useCartStore();
 
     const handleRemove = async (id: string) => {
-        await syncedCart.removeItem(id); // will remove locally + sync backend
+        // Remove locally; store will attempt to sync to backend if user is authenticated
+        removeItem(id);
     };
 
-    const handleQuantityChange = async (id: string, amount: number) => {
-        await syncedCart.updateQuantity(id, amount); // updates locally + backend
+    const handleQuantityChange = async (id: string, amount: number, currentQty?: number) => {
+        // If decrementing from quantity 1, remove the item to match expected UX
+        if (amount < 0 && currentQty !== undefined && currentQty <= 1) {
+            removeItem(id);
+            return;
+        }
+
+        // Update quantity by delta; the store enforces a minimum quantity of 1
+        updateQuantity(id, amount);
     };
 
     const getSafeSrc = (img: string | StaticImageData): string => {
@@ -74,6 +79,7 @@ const CartItemComponent = () => {
                                 <p className="font-medium">{item.name}</p>
                                 <button
                                     onClick={() => handleRemove(item.id)}
+                                    aria-label={`Remove ${item.name} from cart`}
                                     className="text-blue-500 text-sm hover:underline"
                                 >
                                     Remove
@@ -85,14 +91,16 @@ const CartItemComponent = () => {
 
                         <div className="flex items-center border rounded w-28 justify-between mx-auto">
                             <button
-                                onClick={() => handleQuantityChange(item.id, -1)}
+                                onClick={() => handleQuantityChange(item.id, -1, item.quantity)}
+                                aria-label={`Decrease quantity of ${item.name}`}
                                 className="px-2 text-lg"
                             >
                                 -
                             </button>
                             <span>{item.quantity}</span>
                             <button
-                                onClick={() => handleQuantityChange(item.id, +1)}
+                                onClick={() => handleQuantityChange(item.id, +1, item.quantity)}
+                                aria-label={`Increase quantity of ${item.name}`}
                                 className="px-2 text-lg"
                             >
                                 +

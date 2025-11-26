@@ -13,7 +13,18 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Load orders on mount
     loadOrders();
+    
+    // Also reload if user navigates back to this page (handles fresh orders after checkout)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadOrders();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const loadOrders = async () => {

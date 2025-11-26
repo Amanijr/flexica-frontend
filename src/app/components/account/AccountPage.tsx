@@ -287,7 +287,7 @@ export default function AccountPage() {
         <div className="grid grid-cols-1 gap-3 mb-6">
           {user?.vendor && (
             <Link
-              href="/vendor/dashboard"
+              href="/VendorDashboard"
               className="group relative bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-md p-5 hover:shadow-xl transition-all overflow-hidden"
             >
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>

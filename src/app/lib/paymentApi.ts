@@ -5,7 +5,9 @@ import { OrderStatus } from "./orderApi";
 export type PaymentMethod = "MOBILE_MONEY" | "BANK_TRANSFER" | "CASH_ON_DELIVERY";
 
 export interface PaymentData {
-  paymentMethod: PaymentMethod;
+  orderId: number;
+  amount: number;
+  paymentMethod?: PaymentMethod;
   phoneNumber?: string;
   transactionId?: string;
   bankName?: string;

@@ -54,8 +54,19 @@ export async function apiRequest<T = any>(
   } catch (error: any) {
     if (error.response) {
       const errData = error.response.data as any;
-      const message = errData?.message || errData?.error || "Request failed";
-      console.error("API error:", errData, "Status:", error.response.status);
+      // Prefer structured message fields, fall back to string payload, then status
+      let message: string | null = null;
+      if (errData) {
+        if (typeof errData === 'string') message = errData;
+        else message = errData?.message || errData?.error || null;
+      }
+      if (!message) message = `Request failed (status ${error.response.status})`;
+      // Log full response payload for easier debugging when payload is empty ({})
+      try {
+        console.error("API error:", JSON.stringify(errData), "Status:", error.response.status);
+      } catch (e) {
+        console.error("API error:", errData, "Status:", error.response.status);
+      }
       throw new Error(message);
     } else if (error.request) {
       console.error("Network error:", error);

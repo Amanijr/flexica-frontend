@@ -6,6 +6,7 @@ import './globals.css'
 import { SessionProvider } from './auth/SessionContext'
 import UniversalLayout from './components/layout/UniversalLayout'
 import { CartSyncOnLogin } from './components/cart/CartSyncOnLogin'
+import CartInitializer from './components/cart/CartInitializer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,7 +24,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <SessionProvider>
-          {/* Automatically merge cart after login */}
+          {/* Initialize cart and automatically merge after login */}
+          <CartInitializer />
           <CartSyncOnLogin /> 
           <UniversalLayout>
             {children}
